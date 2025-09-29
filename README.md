@@ -2,6 +2,12 @@
 
 A unified gateway for Model Context Protocol (MCP) servers that enables discovery, configuration, and access to tools from GitHub repositories through a single endpoint.
 
+
+
+https://github.com/user-attachments/assets/f011f8bf-6c99-4a8a-8236-f8eb0a3fb9e4
+
+
+
 > **Current Version**: 0.8.0  
 > **Note**: This project is in beta. APIs and features are subject to change.
 
