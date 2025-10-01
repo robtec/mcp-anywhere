@@ -673,48 +673,16 @@ async def handle_save_server(request: Request, form_data) -> HTMLResponse:
 
             try:
                 # Update build status
-                server.build_status = "building"
-                await db_session.commit()
-
-                # Build the Docker image
-                container_manager = ContainerManager()
-                image_tag = container_manager.build_server_image(server)
-
-                # Update server with success
-                server.build_status = "built"
-                server.image_tag = image_tag
-                server.build_error = None
+                server.build_status = "stopped"
                 await db_session.commit()
 
                 # Refresh server with eager loading of relationships
                 await db_session.refresh(server, ["secret_files"])
 
-                # Add server to MCP manager and get tools
-                mcp_manager = get_mcp_manager(request)
-                if mcp_manager:
-                    # Clean up any existing container before adding
-                    container_name = container_manager._get_container_name(server.id)
-                    container_manager._cleanup_existing_container(container_name)
-                    discovered_tools = await mcp_manager.add_server(server)
-                    await store_server_tools(db_session, server, discovered_tools)
-
-                logger.info(f'Server "{server.name}" added and built successfully!')
+                logger.info(f'Server "{server.name}" added successfully!')
 
             except (RuntimeError, ValueError, ConnectionError, OSError) as e:
-                # Check if this is a server startup error (credentials, config issues)
-                error_msg = str(e)
-                if "Server startup failed:" in error_msg:
-                    # Log credential/config errors without full backtrace
-                    logger.error(
-                        f"Server configuration error for {server.name}: {error_msg}"
-                    )
-                else:
-                    # Log unexpected errors with full backtrace for debugging
-                    logger.error(f"Failed to build image for {server.name}: {e}")
-
-                server.build_status = "failed"
-                server.build_error = error_msg
-                await db_session.commit()
+                logger.error(f"Failed to build image for {server.name}: {e}")
 
             # Redirect to home page (HTMX compatible)
             if request.headers.get("HX-Request"):
@@ -764,6 +732,96 @@ async def handle_save_server(request: Request, form_data) -> HTMLResponse:
             ),
         )
 
+async def handle_start_server(request: Request, form_data) -> HTMLResponse:
+    """Handle server start request."""
+
+    server_id = request.path_params["server_id"]
+
+    try:
+        # Fetch server from database
+        async with get_async_session() as db_session:
+            stmt = select(MCPServer).where(MCPServer.id == server_id)
+            result = await db_session.execute(stmt)
+            server = result.scalar_one_or_none()
+
+            if not server:
+                return templates.TemplateResponse(
+                    request,
+                    "404.html",
+                    {"message": f"Server '{server_id}' not found"},
+                    status_code=404,
+                )
+
+            try:
+                # Update build status
+                server.build_status = "building"
+                await db_session.commit()
+
+                # Build the Docker image
+                container_manager = ContainerManager()
+                image_tag = container_manager.build_server_image(server)
+
+                # Update server with success
+                server.build_status = "built"
+                server.image_tag = image_tag
+                server.build_error = None
+                await db_session.commit()
+
+                # Refresh server with eager loading of relationships
+                await db_session.refresh(server, ["secret_files"])
+
+                # Add server to MCP manager and get tools
+                mcp_manager = get_mcp_manager(request)
+                if mcp_manager:
+                    # Clean up any existing container before adding
+                    container_name = container_manager._get_container_name(server.id)
+                    container_manager._cleanup_existing_container(container_name)
+                    discovered_tools = await mcp_manager.add_server(server)
+                    await store_server_tools(db_session, server, discovered_tools)
+
+                logger.info(f'Server "{server.name}" built successfully!')
+
+            except (RuntimeError, ValueError, ConnectionError, OSError) as e:
+                # Check if this is a server startup error (credentials, config issues)
+                error_msg = str(e)
+                if "Server startup failed:" in error_msg:
+                    # Log credential/config errors without full backtrace
+                    logger.error(
+                        f"Server configuration error for {server.name}: {error_msg}"
+                    )
+                else:
+                    # Log unexpected errors with full backtrace for debugging
+                    logger.error(f"Failed to build image for {server.name}: {e}")
+
+                server.build_status = "failed"
+                server.build_error = error_msg
+                await db_session.commit()
+
+            # Redirect to home page (HTMX compatible)
+            if request.headers.get("HX-Request"):
+                response = HTMLResponse("", status_code=200)
+                response.headers["HX-Redirect"] = "/"
+                return response
+            else:
+                return RedirectResponse(url="/", status_code=302)
+
+    except (
+        RuntimeError,
+        ValueError,
+        ConnectionError,
+        IntegrityError,
+    ) as e:
+        logger.exception(f"Error starting server: {e}")
+        return templates.TemplateResponse(
+            request,
+            "servers/add.html",
+            get_template_context(
+                request,
+                form_data=form_data,
+                error="Error saving server. Please try again.",
+            ),
+        )
+
 
 async def add_server_post(request: Request) -> HTMLResponse:
     """Handle add server form submission."""
@@ -782,6 +840,11 @@ async def add_server_post(request: Request) -> HTMLResponse:
         request, "servers/add.html", get_template_context(request, form_data=form_data)
     )
 
+async def start_server_post(request: Request) -> HTMLResponse:
+    """Handle start server functionality."""
+    form_data = await request.form()
+    return await handle_start_server(request, form_data)
+
 
 async def add_server(request: Request) -> HTMLResponse:
     """Handle both GET and POST for /servers/add."""
@@ -797,6 +860,10 @@ async def edit_server(request: Request):
         return await edit_server_get(request)
     else:
         return await edit_server_post(request)
+
+async def start_server(request: Request):
+    """Handle POST for /servers/{server_id}/start."""
+    return await start_server_post(request)
 
 
 async def favicon(_request: Request):
@@ -820,6 +887,7 @@ routes = [
     Route("/servers/add", endpoint=add_server, methods=["GET", "POST"]),
     Route("/servers/{server_id}", endpoint=server_detail, methods=["GET"]),
     Route("/servers/{server_id}/edit", endpoint=edit_server, methods=["GET", "POST"]),
+    Route("/servers/{server_id}/start", endpoint=start_server, methods=["GET", "POST"]),
     Route(
         "/servers/{server_id}/tools/{tool_id}/toggle",
         endpoint=toggle_tool,

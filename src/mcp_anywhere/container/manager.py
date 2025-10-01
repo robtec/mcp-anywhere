@@ -358,10 +358,8 @@ class ContainerManager:
             # Determine base image and install command
             if server.runtime_type == "npx":
                 lang = "javascript"
-                base_image = self.node_image
             elif server.runtime_type == "uvx":
                 lang = "python"
-                base_image = self.python_image
             else:
                 raise ValueError(f"Unsupported runtime type: {server.runtime_type}")
 
@@ -371,7 +369,7 @@ class ContainerManager:
             # Use LLM-Sandbox to create container and install dependencies
             with SandboxSession(
                 lang=lang,
-                image=base_image,
+                dockerfile=f"src/mcp_anywhere/dockerfiles/{lang}/Dockerfile",
                 client=self.docker_client,
                 keep_template=True,
                 commit_container=True,
@@ -383,36 +381,10 @@ class ContainerManager:
                     "cpu_quota": 100000,  # 1 CPU to speed up builds
                 },
             ) as session:
-                # Progress logging
-                logger.info(f"Step 1/3: Setting up container for {server.name}...")
-
-                # For uvx servers, install uv first
-                if server.runtime_type == "uvx":
-                    logger.info("Installing uv for uvx server...")
-                    uv_result = session.execute_command("pip install uv")
-                    if uv_result.exit_code != 0:
-                        raise RuntimeError(f"Failed to install uv: {uv_result.stderr}")
-                    logger.info("uv installed successfully")
-
-                # Create Python sandbox directory for mcp-python-interpreter if this is a uvx server
-                if (
-                    server.runtime_type == "uvx"
-                    and "mcp-python-interpreter" in server.start_command
-                ):
-                    logger.info(
-                        "Creating Python sandbox directory for mcp-python-interpreter..."
-                    )
-                    mkdir_result = session.execute_command(
-                        "mkdir -p /data/python-sandbox && chmod 755 /data/python-sandbox"
-                    )
-                    if mkdir_result.exit_code != 0:
-                        logger.warning(
-                            f"Failed to create sandbox directory: {mkdir_result.stderr}"
-                        )
 
                 # Install dependencies only if install_command is not empty
                 if install_command:
-                    logger.info(f"Step 2/3: Installing {server.name} dependencies...")
+                    logger.info(f"Step 1/2: Installing {server.name} dependencies...")
                     logger.info(f"Running: {install_command}")
                     result = session.execute_command(install_command)
 
@@ -434,7 +406,7 @@ class ContainerManager:
 
                 # Commit the container to a new image with explicit settings
                 # Use a larger timeout and resource-friendly settings
-                logger.info(f"Step 3/3: Creating image {image_tag}...")
+                logger.info(f"Step 2/2: Creating image {image_tag}...")
                 container.commit(
                     repository=image_tag,
                     conf={
