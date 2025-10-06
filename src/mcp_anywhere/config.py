@@ -99,3 +99,24 @@ class Config:
     DEFAULT_SERVERS_FILE = os.environ.get(
         "DEFAULT_SERVERS_FILE", "default_servers.json"
     )
+
+    # Google OAuth settings
+    GOOGLE_OAUTH_CLIENT_ID = os.environ.get("GOOGLE_OAUTH_CLIENT_ID")
+    GOOGLE_OAUTH_CLIENT_SECRET = os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET")
+    GOOGLE_OAUTH_REDIRECT_URI = os.environ.get("GOOGLE_OAUTH_REDIRECT_URI")
+    GOOGLE_OAUTH_AUTH_URL = os.environ.get(
+        "GOOGLE_OAUTH_AUTH_URL", "https://accounts.google.com/o/oauth2/auth"
+    )
+    GOOGLE_OAUTH_TOKEN_URL = os.environ.get(
+        "GOOGLE_OAUTH_TOKEN_URL", "https://accounts.google.com/o/oauth2/token"
+    )
+    GOOGLE_OAUTH_SCOPE = os.environ.get(
+        "GOOGLE_OAUTH_SCOPE",
+        "https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile openid"
+    )
+
+    GOOGLE_OAUTH_USERINFO_URL = os.environ.get(
+        "GOOGLE_OAUTH_USERINFO_URL", "https://www.googleapis.com/oauth2/v2/userinfo"
+    )
+
+    OAUTH_USER_ALLOWED_DOMAINS = os.environ.get("OAUTH_USER_ALLOWED_DOMAIN")
