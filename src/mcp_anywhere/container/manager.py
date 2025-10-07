@@ -37,10 +37,6 @@ class ContainerManager:
     def __init__(self) -> None:
         """Initialize container manager for MCP servers."""
         self.docker_host = Config.DOCKER_HOST
-        # Get Python image from config
-        self.python_image = Config.MCP_PYTHON_IMAGE
-        # Get Node.js image from config
-        self.node_image = Config.MCP_NODE_IMAGE
         # Docker client with extended timeout for large operations
         self.docker_client: DockerClient = DockerClient.from_env(
             timeout=Config.DOCKER_TIMEOUT
@@ -504,26 +500,14 @@ class ContainerManager:
             raise RuntimeError("Docker daemon is not running")
         logger.info("Docker is running.")
 
-        # 2. Ensure base images exist
-        try:
-            logger.info("Ensuring base Docker images exist...")
-            self._ensure_image_exists(Config.MCP_NODE_IMAGE)
-            self._ensure_image_exists(Config.MCP_PYTHON_IMAGE)
-            logger.info("Base Docker images are available.")
-        except (APIError, OSError, RuntimeError) as e:
-            logger.exception(
-                f"Failed to ensure base images: {e}. Please check your Docker setup."
-            )
-            raise
-
-        # 3. Ensure default servers exist in the database
+        # 2. Ensure default servers exist in the database
         try:
             await self.ensure_default_servers()
         except (RuntimeError, ValueError, OSError) as e:
             logger.exception(f"Failed to ensure default servers: {e}")
             raise
 
-        # 4. Find all active servers and ensure they are ready (reuse or rebuild)
+        # 3. Find all active servers and ensure they are ready (reuse or rebuild)
         logger.info("Ensuring all active server containers are ready...")
 
         async with get_async_session() as session:
