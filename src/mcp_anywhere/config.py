@@ -100,6 +100,9 @@ class Config:
     CLEANUP_CONTAINERS_ON_SHUTDOWN = os.environ.get(
         "CLEANUP_CONTAINERS_ON_SHUTDOWN", "false"
     ).lower() in ("true", "1", "yes")
+    REBUILD_CONTAINERS_ON_STARTUP = os.environ.get(
+        "REBUILD_CONTAINERS_ON_STARTUP", "false"
+    ).lower() in ("true", "1", "yes")
 
     # Google OAuth settings
     GOOGLE_OAUTH_CLIENT_ID = os.environ.get("GOOGLE_OAUTH_CLIENT_ID")

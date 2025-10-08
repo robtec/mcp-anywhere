@@ -141,6 +141,31 @@ class ContainerManager:
                 f"Docker API error while cleaning up container '{container_name}': {e}"
             )
 
+    def restart_container(self, server_id: str) -> bool:
+        """Restart a container.
+
+        Args:
+            server_id: The server ID to restart
+
+
+        Returns:
+            Bool reflecting if the container was restarted.
+        """
+        container_name = self._get_container_name(server_id)
+
+        try:
+            container = self.docker_client.containers.get(container_name)
+
+            self.docker_client.containers.get(container_name).restart()
+        except NotFound:
+            logger.debug(f"Container {container_name} not found")
+            return False
+        except (APIError, ConnectionError, OSError) as e:
+            logger.error(f"Failed to restart container {container_name}: {e}")
+            return False
+
+        return True
+
     def get_container_error_logs(self, server_id: str, tail: int = 50) -> str:
         """Get recent logs from a container to help diagnose startup issues.
 

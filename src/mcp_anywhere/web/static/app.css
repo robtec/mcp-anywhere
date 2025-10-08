@@ -48,6 +48,16 @@
   background-color: #2563EB; /* Slightly darker blue */
 }
 
+/* Action Button Styles - Semantic influenced */
+.btn-action {
+  background-color: #10B981; /* Semantic Green */
+  color: white;
+}
+
+.btn-action:hover {
+  background-color: #34D399; /* Slightly lighter green */
+}
+
 /* Neutral/Back Button Styles */
 .btn-neutral {
   background-color: white;

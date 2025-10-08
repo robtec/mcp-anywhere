@@ -62,8 +62,6 @@ async def homepage(request: Request) -> HTMLResponse:
             stmt = (
                 select(MCPServer)
                 .options(selectinload(MCPServer.tools))
-                .where(MCPServer.is_active)
-                .order_by(MCPServer.name)
             )
             result = await db_session.execute(stmt)
             servers = result.scalars().all()
@@ -674,6 +672,7 @@ async def handle_save_server(request: Request, form_data) -> HTMLResponse:
             try:
                 # Update build status
                 server.build_status = "stopped"
+                server.is_active = False
                 await db_session.commit()
 
                 # Refresh server with eager loading of relationships
@@ -763,6 +762,7 @@ async def handle_start_server(request: Request, form_data) -> HTMLResponse:
 
                 # Update server with success
                 server.build_status = "built"
+                server.is_active = True
                 server.image_tag = image_tag
                 server.build_error = None
                 await db_session.commit()
@@ -822,6 +822,69 @@ async def handle_start_server(request: Request, form_data) -> HTMLResponse:
             ),
         )
 
+async def handle_restart_server(request: Request, form_data) -> HTMLResponse:
+    """Handle server restart request."""
+
+    server_id = request.path_params["server_id"]
+
+    try:
+        # Fetch server from database
+        async with get_async_session() as db_session:
+            stmt = select(MCPServer).where(MCPServer.id == server_id)
+            result = await db_session.execute(stmt)
+            server = result.scalar_one_or_none()
+
+            if not server:
+                return templates.TemplateResponse(
+                    request,
+                    "404.html",
+                    {"message": f"Server '{server_id}' not found"},
+                    status_code=404,
+                )
+
+            try:
+                # Restart the container
+                container_manager = ContainerManager()
+                container_manager.restart_container(server_id)
+
+                logger.info(f'Server "{server.name}" restarted successfully!')
+
+            except (RuntimeError, ValueError, ConnectionError, OSError) as e:
+                # Check if this is a server startup error (credentials, config issues)
+                error_msg = str(e)
+                if "Server startup failed:" in error_msg:
+                    # Log credential/config errors without full backtrace
+                    logger.error(
+                        f"Server configuration error for {server.name}: {error_msg}"
+                    )
+                else:
+                    # Log unexpected errors with full backtrace for debugging
+                    logger.error(f"Failed to build image for {server.name}: {e}")
+
+            # Redirect to home page (HTMX compatible)
+            if request.headers.get("HX-Request"):
+                response = HTMLResponse("", status_code=200)
+                response.headers["HX-Redirect"] = "/"
+                return response
+            else:
+                return RedirectResponse(url="/", status_code=302)
+
+    except (
+        RuntimeError,
+        ValueError,
+        ConnectionError,
+        IntegrityError,
+    ) as e:
+        logger.exception(f"Error restarting server: {e}")
+        return templates.TemplateResponse(
+            request,
+            "servers/add.html",
+            get_template_context(
+                request,
+                form_data=form_data,
+                error="Error saving server. Please try again.",
+            ),
+        )
 
 async def add_server_post(request: Request) -> HTMLResponse:
     """Handle add server form submission."""
@@ -845,6 +908,10 @@ async def start_server_post(request: Request) -> HTMLResponse:
     form_data = await request.form()
     return await handle_start_server(request, form_data)
 
+async def restart_server_post(request: Request) -> HTMLResponse:
+    """Handle restart server functionality."""
+    form_data = await request.form()
+    return await handle_restart_server(request, form_data)
 
 async def add_server(request: Request) -> HTMLResponse:
     """Handle both GET and POST for /servers/add."""
@@ -864,6 +931,10 @@ async def edit_server(request: Request):
 async def start_server(request: Request):
     """Handle POST for /servers/{server_id}/start."""
     return await start_server_post(request)
+
+async def restart_server(request: Request):
+    """Handle POST for /servers/{server_id}/restart."""
+    return await restart_server_post(request)
 
 
 async def favicon(_request: Request):
@@ -888,6 +959,7 @@ routes = [
     Route("/servers/{server_id}", endpoint=server_detail, methods=["GET"]),
     Route("/servers/{server_id}/edit", endpoint=edit_server, methods=["GET", "POST"]),
     Route("/servers/{server_id}/start", endpoint=start_server, methods=["GET", "POST"]),
+    Route("/servers/{server_id}/restart", endpoint=restart_server, methods=["GET", "POST"]),
     Route(
         "/servers/{server_id}/tools/{tool_id}/toggle",
         endpoint=toggle_tool,

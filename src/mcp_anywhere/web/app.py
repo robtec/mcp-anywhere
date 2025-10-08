@@ -72,7 +72,10 @@ You can use tools/list to see all available tools from all mounted servers.
 
     if not os.environ.get("PYTEST_CURRENT_TEST"):
         container_manager = ContainerManager()
-        await container_manager.initialize_and_build_servers()
+
+        if Config.REBUILD_CONTAINERS_ON_STARTUP:
+            await container_manager.initialize_and_build_servers()
+
         await container_manager.mount_built_servers(mcp_manager)
 
     # Create FastMCP HTTP app (ONCE, like the old architecture)
