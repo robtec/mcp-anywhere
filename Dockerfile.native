@@ -1,6 +1,4 @@
-FROM python:3.10-alpine3.22
-
-RUN apk update && apk add --no-cache tini git fuse-overlayfs tini nodejs-current npm docker-cli
+FROM python:3.10 AS build
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
@@ -10,12 +8,18 @@ COPY . /app/
 
 RUN uv sync --locked --no-dev
 
-ENV PATH="/app/.venv/bin:$PATH"
+FROM python:3.10-alpine3.20
+
+RUN apk update && apk add bash
+
+COPY --from=docker:cli /usr/local/bin/docker /usr/local/bin/docker
+
+COPY --from=build /app/ /app/
+
+WORKDIR /app/
 
 EXPOSE 8000
 
-COPY entrypoint.native.sh /usr/local/bin/entrypoint.sh
+ENV PATH="/app/.venv/bin:$PATH"
 
-ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
-
-CMD ["tini", "-s", "--", "python", "-m", "mcp_anywhere", "serve", "http"]
+CMD ["python", "-m", "mcp_anywhere", "serve", "http"]
