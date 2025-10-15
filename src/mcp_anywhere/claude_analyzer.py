@@ -81,9 +81,9 @@ class AsyncClaudeAnalyzer:
         try:
             analysis_text = await self._call_claude_api(prompt)
             return self._parse_claude_response(analysis_text)
-        except AnthropicError as e:
-            logger.exception(f"Claude API error: {e}")
-            raise ConnectionError(f"Failed to get analysis from Claude: {e}")
+        except Exception as ex:
+            logger.exception(f"Claude API error: {ex}")
+            raise ConnectionError(f"Failed to get analysis from Claude: {ex}")
 
     @retry(
         stop=stop_after_attempt(3),

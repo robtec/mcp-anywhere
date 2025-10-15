@@ -37,10 +37,6 @@ class ContainerManager:
     def __init__(self) -> None:
         """Initialize container manager for MCP servers."""
         self.docker_host = Config.DOCKER_HOST
-        # Get Python image from config
-        self.python_image = Config.MCP_PYTHON_IMAGE
-        # Get Node.js image from config
-        self.node_image = Config.MCP_NODE_IMAGE
         # Docker client with extended timeout for large operations
         self.docker_client: DockerClient = DockerClient.from_env(
             timeout=Config.DOCKER_TIMEOUT
@@ -144,6 +140,31 @@ class ContainerManager:
             logger.exception(
                 f"Docker API error while cleaning up container '{container_name}': {e}"
             )
+
+    def restart_container(self, server_id: str) -> bool:
+        """Restart a container.
+
+        Args:
+            server_id: The server ID to restart
+
+
+        Returns:
+            Bool reflecting if the container was restarted.
+        """
+        container_name = self._get_container_name(server_id)
+
+        try:
+            container = self.docker_client.containers.get(container_name)
+
+            self.docker_client.containers.get(container_name).restart()
+        except NotFound:
+            logger.debug(f"Container {container_name} not found")
+            return False
+        except (APIError, ConnectionError, OSError) as e:
+            logger.error(f"Failed to restart container {container_name}: {e}")
+            return False
+
+        return True
 
     def get_container_error_logs(self, server_id: str, tail: int = 50) -> str:
         """Get recent logs from a container to help diagnose startup issues.
@@ -358,10 +379,8 @@ class ContainerManager:
             # Determine base image and install command
             if server.runtime_type == "npx":
                 lang = "javascript"
-                base_image = self.node_image
             elif server.runtime_type == "uvx":
                 lang = "python"
-                base_image = self.python_image
             else:
                 raise ValueError(f"Unsupported runtime type: {server.runtime_type}")
 
@@ -371,7 +390,7 @@ class ContainerManager:
             # Use LLM-Sandbox to create container and install dependencies
             with SandboxSession(
                 lang=lang,
-                image=base_image,
+                dockerfile=f"src/mcp_anywhere/dockerfiles/{lang}/Dockerfile",
                 client=self.docker_client,
                 keep_template=True,
                 commit_container=True,
@@ -383,36 +402,10 @@ class ContainerManager:
                     "cpu_quota": 100000,  # 1 CPU to speed up builds
                 },
             ) as session:
-                # Progress logging
-                logger.info(f"Step 1/3: Setting up container for {server.name}...")
-
-                # For uvx servers, install uv first
-                if server.runtime_type == "uvx":
-                    logger.info("Installing uv for uvx server...")
-                    uv_result = session.execute_command("pip install uv")
-                    if uv_result.exit_code != 0:
-                        raise RuntimeError(f"Failed to install uv: {uv_result.stderr}")
-                    logger.info("uv installed successfully")
-
-                # Create Python sandbox directory for mcp-python-interpreter if this is a uvx server
-                if (
-                    server.runtime_type == "uvx"
-                    and "mcp-python-interpreter" in server.start_command
-                ):
-                    logger.info(
-                        "Creating Python sandbox directory for mcp-python-interpreter..."
-                    )
-                    mkdir_result = session.execute_command(
-                        "mkdir -p /data/python-sandbox && chmod 755 /data/python-sandbox"
-                    )
-                    if mkdir_result.exit_code != 0:
-                        logger.warning(
-                            f"Failed to create sandbox directory: {mkdir_result.stderr}"
-                        )
 
                 # Install dependencies only if install_command is not empty
                 if install_command:
-                    logger.info(f"Step 2/3: Installing {server.name} dependencies...")
+                    logger.info(f"Step 1/2: Installing {server.name} dependencies...")
                     logger.info(f"Running: {install_command}")
                     result = session.execute_command(install_command)
 
@@ -434,7 +427,7 @@ class ContainerManager:
 
                 # Commit the container to a new image with explicit settings
                 # Use a larger timeout and resource-friendly settings
-                logger.info(f"Step 3/3: Creating image {image_tag}...")
+                logger.info(f"Step 2/2: Creating image {image_tag}...")
                 container.commit(
                     repository=image_tag,
                     conf={
@@ -532,26 +525,14 @@ class ContainerManager:
             raise RuntimeError("Docker daemon is not running")
         logger.info("Docker is running.")
 
-        # 2. Ensure base images exist
-        try:
-            logger.info("Ensuring base Docker images exist...")
-            self._ensure_image_exists(Config.MCP_NODE_IMAGE)
-            self._ensure_image_exists(Config.MCP_PYTHON_IMAGE)
-            logger.info("Base Docker images are available.")
-        except (APIError, OSError, RuntimeError) as e:
-            logger.exception(
-                f"Failed to ensure base images: {e}. Please check your Docker setup."
-            )
-            raise
-
-        # 3. Ensure default servers exist in the database
+        # 2. Ensure default servers exist in the database
         try:
             await self.ensure_default_servers()
         except (RuntimeError, ValueError, OSError) as e:
             logger.exception(f"Failed to ensure default servers: {e}")
             raise
 
-        # 4. Find all active servers and ensure they are ready (reuse or rebuild)
+        # 3. Find all active servers and ensure they are ready (reuse or rebuild)
         logger.info("Ensuring all active server containers are ready...")
 
         async with get_async_session() as session:
