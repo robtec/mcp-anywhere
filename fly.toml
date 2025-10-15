@@ -17,7 +17,7 @@ kill_timeout = '5s'
   WEB_PORT = '8000'
   MCP_PATH = '/mcp'
   LOG_LEVEL = 'DEBUG'
-  SERVER_URL = 'https://mcp-anywhere.fly.dev'
+  SERVER_URL = 'https://mcp-anywhere-6s7jqq.fly.dev'
   OAUTH_USER_ALLOWED_DOMAIN = 'locomotive.agency'
 
 [[mounts]]
