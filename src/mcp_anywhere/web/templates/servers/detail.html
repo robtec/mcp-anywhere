@@ -12,6 +12,45 @@
                 <p class="mt-2 text-gray-600">{{ server.description or "No description provided" }}</p>
             </div>
             <div class="flex flex-col sm:flex-row gap-3">
+                {% if server.is_active %}
+                <form method="POST" action="/servers/{{ server.id }}/restart" class="inline">
+                    <button type="submit"
+                            id="restart-btn"
+                            hx-post="/servers/{{ server.id }}/restart"
+                            hx-indicator="#restart-spinner"
+                            class="btn-action inline-flex items-center justify-center w-full text-white px-4 py-2 rounded-lg transition-colors">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"></path>
+                        </svg>
+                        <div id="restart-spinner" class="htmx-indicator hidden inline w-4 h-4 mr-2 animate-spin">
+                            <svg viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                        </div>
+                        Restart Server
+                    </button>
+                </form>
+                {% else %}
+                <form method="POST" action="/servers/{{ server.id }}/start" class="inline">
+                    <button type="submit"
+                            id="start-btn"
+                            hx-post="/servers/{{ server.id }}/start"
+                            hx-indicator="#start-spinner"
+                            class="btn-action inline-flex items-center justify-center w-full text-white px-4 py-2 rounded-lg transition-colors">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.636 5.636a9 9 0 1 0 12.728 0M12 3v9"></path>
+                        </svg>
+                        <div id="start-spinner" class="htmx-indicator hidden inline w-4 h-4 mr-2 animate-spin">
+                            <svg viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                        </div>
+                        Start Server
+                    </button>
+                </form>
+                {% endif %}
                 <a href="/servers/{{ server.id }}/edit" 
                    class="btn-primary inline-flex items-center justify-center px-4 py-2 rounded-lg transition-colors">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

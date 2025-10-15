@@ -34,9 +34,10 @@ def setup_signal_handlers(loop) -> None:
 async def cleanup_and_exit(loop, sig) -> None:
     """Perform cleanup tasks and exit gracefully."""
     try:
-        # Clean up containers
-        container_manager = ContainerManager()
-        await container_manager.cleanup_all_containers()
+
+        if Config.CLEANUP_CONTAINERS_ON_SHUTDOWN:
+            container_manager = ContainerManager()
+            await container_manager.cleanup_all_containers()
 
         # Close database connections
         await close_db()

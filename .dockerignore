@@ -13,6 +13,7 @@ htmlcov/
 .mypy_cache/
 .dmypy.json
 dmypy.json
+.venv
 
 # Project specific
 .data/
