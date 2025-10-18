@@ -429,6 +429,28 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
 
         return auth_url
 
+    async def build_auth_url(self) -> str:
+
+        state = secrets.token_hex(16)
+
+        self.state_mapping[state] = {
+            "redirect_uri": f"{Config.SERVER_URL}{Config.GOOGLE_OAUTH_REDIRECT_URI}",
+            "code_challenge": "code",
+            "redirect_uri_provided_explicitly": "True",
+            "client_id": f"{Config.GOOGLE_OAUTH_CLIENT_ID}",
+        }
+
+        auth_url = (
+            f"{Config.GOOGLE_OAUTH_AUTH_URL}"
+            f"?client_id={Config.GOOGLE_OAUTH_CLIENT_ID}"
+            f"&redirect_uri={Config.SERVER_URL}{Config.GOOGLE_OAUTH_REDIRECT_URI}"
+            f"&response_type=code"
+            f"&scope={Config.GOOGLE_OAUTH_SCOPE}"
+            f"&state={state}"
+        )
+
+        return auth_url
+
     async def handle_callback(self, code: str, state: str) -> str:
         """Handle Google OAuth callback."""
 
@@ -490,7 +512,7 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
 
         del self.state_mapping[state]
 
-        return construct_redirect_uri(redirect_uri, code=new_code, state=state)
+        return token
 
     async def load_authorization_code(
             self, client: OAuthClientInformationFull, authorization_code: str
@@ -582,9 +604,7 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
 
         return access_token
 
-    async def get_user_profile(self, token: str) -> dict[str, Any]:
-
-        access_token = self.token_mapping.get(token)
+    async def get_user_profile(self, access_token: str) -> dict[str, Any]:
 
         http_response = await create_mcp_http_client().get(
             Config.GOOGLE_OAUTH_USERINFO_URL,
@@ -598,3 +618,13 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
             )
 
         return http_response.json()
+
+    async def user_has_domain_authorization(self, email: str) -> bool:
+
+        domain = email.split("@")[1]
+        logger.debug(f"Checking User Domain: {domain}")
+
+        if Config.OAUTH_USER_ALLOWED_DOMAINS is not None and domain not in Config.OAUTH_USER_ALLOWED_DOMAINS:
+            return False
+
+        return True
