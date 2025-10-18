@@ -629,7 +629,7 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
     async def user_has_domain_authorization(self, email: str) -> bool:
 
         domain = email.split("@")[1]
-        logger.debug(f"Checking User Domain: {domain}")
+        logger.debug(f"Checking user domain {domain} against authorized domain")
 
         if Config.OAUTH_USER_ALLOWED_DOMAINS is not None and domain not in Config.OAUTH_USER_ALLOWED_DOMAINS:
             return False
@@ -637,4 +637,5 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
         return True
 
     async def resource_token_from_state(self, state: str) -> str:
+        logger.debug(f"Fetching resource token from state {state}")
         return self.state_resource_tokens[state]
