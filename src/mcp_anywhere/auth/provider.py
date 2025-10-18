@@ -433,8 +433,10 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
 
         state = secrets.token_hex(16)
 
+        redirect_uri = f"{Config.SERVER_URL}{Config.GOOGLE_OAUTH_REDIRECT_URI}/btn"
+
         self.state_mapping[state] = {
-            "redirect_uri": f"{Config.SERVER_URL}{Config.GOOGLE_OAUTH_REDIRECT_URI}",
+            "redirect_uri": redirect_uri,
             "code_challenge": "code",
             "redirect_uri_provided_explicitly": "True",
             "client_id": f"{Config.GOOGLE_OAUTH_CLIENT_ID}",
@@ -443,13 +445,77 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
         auth_url = (
             f"{Config.GOOGLE_OAUTH_AUTH_URL}"
             f"?client_id={Config.GOOGLE_OAUTH_CLIENT_ID}"
-            f"&redirect_uri={Config.SERVER_URL}{Config.GOOGLE_OAUTH_REDIRECT_URI}"
+            f"&redirect_uri={redirect_uri}"
             f"&response_type=code"
             f"&scope={Config.GOOGLE_OAUTH_SCOPE}"
             f"&state={state}"
         )
 
         return auth_url
+
+    async def get_token_from_callback(self, code: str, state: str) -> AccessToken:
+
+        state_data = self.state_mapping.get(state)
+
+        if not state_data:
+            raise HTTPException(400, "Invalid state parameter")
+
+        redirect_uri = state_data["redirect_uri"]
+        code_challenge = state_data["code_challenge"]
+        redirect_uri_provided_explicitly = state_data["redirect_uri_provided_explicitly"] == "True"
+        client_id = state_data["client_id"]
+
+        """Fetch Google access token"""
+        access_token_url = Config.GOOGLE_OAUTH_TOKEN_URL
+        http_response = await create_mcp_http_client().post(
+            access_token_url,
+            data=urllib.parse.urlencode({
+                "client_id": Config.GOOGLE_OAUTH_CLIENT_ID,
+                "client_secret": Config.GOOGLE_OAUTH_CLIENT_SECRET,
+                "code": code,
+                "redirect_uri": f"{Config.SERVER_URL}{Config.GOOGLE_OAUTH_REDIRECT_URI}/btn",
+                "grant_type": "authorization_code",
+            }),
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+
+        logger.debug(
+            f"Google authorization HTTP Response: {http_response.status_code} {http_response.text}"
+        )
+
+        http_response.raise_for_status()
+
+        access_response = http_response.json()
+
+        token = access_response.get('access_token')
+
+        new_code = secrets.token_hex(16)
+
+        auth_code = AuthorizationCode(
+            code=new_code,
+            client_id=client_id,
+            redirect_uri=str(AnyHttpUrl(redirect_uri)),
+            redirect_uri_provided_explicitly=redirect_uri_provided_explicitly,
+            expires_at=time.time() + 300,
+            scopes=Config.GOOGLE_OAUTH_SCOPE.split(),
+            code_challenge=code_challenge,
+        )
+
+        self.auth_codes[new_code] = auth_code
+
+        access_token = AccessToken(
+            token=token,
+            client_id=client_id,
+            scopes=Config.GOOGLE_OAUTH_SCOPE.split(),
+            expires_at=None,
+            **access_response
+        )
+
+        self.tokens[token] = access_token
+
+        del self.state_mapping[state]
+
+        return access_token
 
     async def handle_callback(self, code: str, state: str) -> str:
         """Handle Google OAuth callback."""
@@ -512,7 +578,7 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
 
         del self.state_mapping[state]
 
-        return token
+        return construct_redirect_uri(redirect_uri, code=new_code, state=state)
 
     async def load_authorization_code(
             self, client: OAuthClientInformationFull, authorization_code: str
