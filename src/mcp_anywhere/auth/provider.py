@@ -631,7 +631,7 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
         domain = email.split("@")[1]
         logger.debug(f"Checking user domain {domain} against authorized domain")
 
-        if Config.OAUTH_USER_ALLOWED_DOMAINS is not None and domain not in Config.OAUTH_USER_ALLOWED_DOMAINS:
+        if Config.OAUTH_USER_ALLOWED_DOMAINS is not None and domain is not Config.OAUTH_USER_ALLOWED_DOMAINS:
             return False
 
         return True
