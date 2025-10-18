@@ -28,8 +28,9 @@ async def login_page(request: Request) -> HTMLResponse:
     """Render the login page."""
     error = request.query_params.get("error")
     next_url = request.query_params.get("next", "")
+    google_oauth = True if Config.GOOGLE_OAUTH_CLIENT_ID else False
     return templates.TemplateResponse(
-        request, "auth/login.html", {"error": error, "next_url": next_url}
+        request, "auth/login.html", {"error": error, "next_url": next_url, "google_oauth": google_oauth }
     )
 
 async def handle_login(request: Request) -> RedirectResponse:
@@ -312,6 +313,6 @@ def create_oauth_http_routes(get_async_session, oauth_provider=None) -> list[Rou
 
     # Google OAuth routes
     mcp_routes.append(Route("/auth/callback", endpoint=handle_oauth_callback, methods=["GET"]))
-    mcp_routes.append(Route("/auth/google", endpoint=handle_google_login, methods=["GET"]))
+    mcp_routes.append(Route("/auth/google", endpoint=handle_google_login, methods=["POST"]))
 
     return mcp_routes
