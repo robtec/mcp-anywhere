@@ -390,7 +390,6 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
         self.tokens: dict[str, AccessToken] = {}
         self.state_mapping: dict[str, dict[str, str]] = {}
         self.token_mapping: dict[str, str] = {}
-        self.btn_tokens: dict[str] = {} # Tokens generated for login button
         self.state_resource_tokens: dict[str] = {}
 
     async def get_client(self, client_id: str) -> OAuthClientInformationFull | None:
