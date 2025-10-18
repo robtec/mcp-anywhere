@@ -1,7 +1,6 @@
 """OAuth routes using MCP SDK's auth module.
 Provides all required endpoints including .well-known discovery.
 """
-from authlib.integrations.starlette_client import OAuth
 from mcp.server.auth.routes import create_auth_routes, create_protected_resource_routes
 from mcp.server.auth.settings import AuthSettings, ClientRegistrationOptions
 from sqlalchemy import select
@@ -201,9 +200,9 @@ async def handle_oauth_callback_btn(request: Request) -> RedirectResponse:
 
     try:
 
-        access_token = await oauth_provider.get_token_from_callback(code, state)
+        access_token = await oauth_provider.resource_token_from_state(state)
 
-        user_profile = await oauth_provider.get_user_profile(access_token.token)
+        user_profile = await oauth_provider.get_user_profile(access_token)
 
         if not await oauth_provider.user_has_domain_authorization(user_profile["email"]):
             logger.error(f"User {user_profile["email"]} not part of authorized domain")
@@ -228,12 +227,14 @@ async def handle_oauth_callback(request: Request) -> RedirectResponse:
     code = request.query_params.get("code")
     state = request.query_params.get("state")
 
-    next_url = request.query_params.get("next", "/")
-
     if not code or not state:
         raise HTTPException(400, "Missing code or state parameter")
 
     oauth_provider = request.app.state.oauth_provider
+
+    if state.endswith("_btn"): # handle callback specific from login button
+        await oauth_provider.handle_callback(code, state)
+        return await handle_oauth_callback_btn(request)
 
     try:
 
@@ -241,19 +242,6 @@ async def handle_oauth_callback(request: Request) -> RedirectResponse:
 
         return RedirectResponse(status_code=302, url=redirect_uri)
 
-        user_profile = await oauth_provider.get_user_profile(token)
-
-        if not await oauth_provider.user_has_domain_authorization(user_profile["email"]):
-            logger.error(f"User {user_profile["email"]} not part of authorized domain")
-            error_url = f"/auth/login?error=User {user_profile["email"]} not part of authorized domain"
-            if next_url != "/":
-                error_url += f"&next={next_url}"
-            return RedirectResponse(url=error_url, status_code=302)
-
-        request.session["user_id"] = user_profile["id"]
-        request.session["username"] = user_profile["name"]
-
-        return RedirectResponse(status_code=302, url=next_url)
     except HTTPException:
         raise
     except Exception as e:
@@ -324,7 +312,6 @@ def create_oauth_http_routes(get_async_session, oauth_provider=None) -> list[Rou
 
     # Google OAuth routes
     mcp_routes.append(Route("/auth/callback", endpoint=handle_oauth_callback, methods=["GET"]))
-    mcp_routes.append(Route("/auth/callback/btn", endpoint=handle_oauth_callback_btn, methods=["GET"]))
     mcp_routes.append(Route("/auth/google", endpoint=handle_google_login, methods=["GET"]))
 
     return mcp_routes
