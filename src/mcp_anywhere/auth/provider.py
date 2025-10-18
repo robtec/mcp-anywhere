@@ -436,10 +436,6 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
 
         redirect_uri = f"{Config.SERVER_URL}{Config.GOOGLE_OAUTH_REDIRECT_URI}"
 
-        self.btn_tokens[state] = {
-            "redirect_uri": redirect_uri
-        }
-
         self.state_mapping[state] = {
             "redirect_uri": redirect_uri,
             "code_challenge": "code",
@@ -455,6 +451,8 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
             f"&scope={Config.GOOGLE_OAUTH_SCOPE}"
             f"&state={state}"
         )
+
+        logger.debug(f"Building auth url: {auth_url}")
 
         return auth_url
 
