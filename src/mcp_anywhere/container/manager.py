@@ -599,16 +599,15 @@ class ContainerManager:
         if built_servers:
             logger.info(f"Mounting {len(built_servers)} built servers...")
 
-            if Config.REBUILD_CONTAINERS_ON_STARTUP:
-                # Clean up existing containers before mounting (skip reused ones)
-                for server in built_servers:
-                    container_name: str = self._get_container_name(server.id)
-                    if container_name in self.reused_containers:
-                        logger.debug(
-                            f"Skipping cleanup for reused container {container_name}"
-                        )
-                    else:
-                        self.cleanup_stopped_container(container_name)
+            # Clean up existing containers before mounting (skip reused ones)
+            for server in built_servers:
+                container_name: str = self._get_container_name(server.id)
+                if container_name in self.reused_containers:
+                    logger.debug(
+                        f"Skipping cleanup for reused container {container_name}"
+                    )
+                else:
+                    self.cleanup_stopped_container(container_name)
 
             async with get_async_session() as db_session:
                 for server in built_servers:
