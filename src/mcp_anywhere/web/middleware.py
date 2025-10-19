@@ -167,7 +167,7 @@ class MCPAuthMiddleware(BaseHTTPMiddleware):
             domain = google_user["email"].split("@")[1]
             logger.debug(f"Google User Domain: {domain}")
 
-            if Config.OAUTH_USER_ALLOWED_DOMAINS is not None and domain not in Config.OAUTH_USER_ALLOWED_DOMAINS:
+            if Config.OAUTH_USER_ALLOWED_DOMAIN is not None and domain not in Config.OAUTH_USER_ALLOWED_DOMAIN:
                 return JSONResponse(
                     {
                         "error": "User Unauthorized",
