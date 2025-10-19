@@ -628,6 +628,8 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
 
     async def user_has_domain_authorization(self, email: str) -> bool:
 
+        logger.debug(f"Checking if user in domain {Config.OAUTH_USER_ALLOWED_DOMAINS}")
+
         if Config.OAUTH_USER_ALLOWED_DOMAINS is None:
             return True
 
