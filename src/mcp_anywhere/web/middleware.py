@@ -1,5 +1,5 @@
 """Session-based authentication middleware for web UI routes."""
-
+from lazy_object_proxy.utils import await_
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, RedirectResponse, Response
@@ -164,10 +164,10 @@ class MCPAuthMiddleware(BaseHTTPMiddleware):
         if isinstance(oauth_provider, GoogleOAuthProvider):
             logger.debug("Fetching Google user details")
             google_user = await oauth_provider.get_user_profile(access_token.token)
-            domain = google_user["email"].split("@")[1]
-            logger.debug(f"Google User Domain: {domain}")
 
-            if Config.OAUTH_USER_ALLOWED_DOMAIN is not None and domain not in Config.OAUTH_USER_ALLOWED_DOMAIN:
+            email = google_user["email"]
+
+            if not await oauth_provider.user_has_domain_authorization(email):
                 return JSONResponse(
                     {
                         "error": "User Unauthorized",
