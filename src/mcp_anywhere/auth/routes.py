@@ -212,8 +212,12 @@ async def handle_oauth_callback_btn(request: Request) -> RedirectResponse:
                 error_url += f"&next={next_url}"
             return RedirectResponse(url=error_url, status_code=302)
 
+        username = user_profile["name"]
+
         request.session["user_id"] = user_profile["id"]
-        request.session["username"] = user_profile["name"]
+        request.session["username"] = username
+
+        logger.debug(f"Google User {username} successfully authenticated")
 
         return RedirectResponse(status_code=302, url=next_url)
     except HTTPException:

@@ -87,7 +87,7 @@ class SessionAuthMiddleware(BasePathProtectionMiddleware):
             # Redirect to login page
             return RedirectResponse(url=self.login_url, status_code=302)
 
-        user = request.session.get("user_id")
+        user = request.session.get("username")
 
         logger.debug(f"Authenticated session ({user}) access to path: {path}")
 
