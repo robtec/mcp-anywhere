@@ -1,5 +1,4 @@
 """Session-based authentication middleware for web UI routes."""
-from lazy_object_proxy.utils import await_
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, RedirectResponse, Response
