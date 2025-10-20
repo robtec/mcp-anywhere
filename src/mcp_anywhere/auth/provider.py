@@ -496,7 +496,7 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
         user_profile = await self.get_user_profile(token)
 
         if not await self.user_has_domain_authorization(user_profile["email"]):
-            raise HTTPException(401, f"User {user_profile['email']} not authorized.")
+            raise HTTPException(401, f"User {user_profile['email']} not part of authorized domain.")
 
         self.state_resource_tokens[state] = token
 
