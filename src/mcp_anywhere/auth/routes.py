@@ -28,7 +28,7 @@ async def login_page(request: Request) -> HTMLResponse:
     """Render the login page."""
     error = request.query_params.get("error")
     next_url = request.query_params.get("next", "")
-    
+
     return templates.TemplateResponse(
         request, "auth/login.html", {"error": error, "next_url": next_url}
     )
