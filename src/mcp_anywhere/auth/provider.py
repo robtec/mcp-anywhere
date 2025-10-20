@@ -493,6 +493,11 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
 
         token = access_response.get('access_token')
 
+        user_profile = await self.get_user_profile(token)
+
+        if not await self.user_has_domain_authorization(user_profile["email"]):
+            raise HTTPException(401, f"User {user_profile['email']} not authorized.")
+
         self.state_resource_tokens[state] = token
 
         new_code = secrets.token_hex(16)
@@ -554,11 +559,6 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
 
         if google_token:
             self.token_mapping[mcp_token] = google_token
-
-        user_profile = await self.get_user_profile(google_token)
-
-        if not await self.user_has_domain_authorization(user_profile["email"]):
-            raise ValueError(f"User {user_profile['email']} not authorized.")
 
         del self.auth_codes[authorization_code.code]
 
