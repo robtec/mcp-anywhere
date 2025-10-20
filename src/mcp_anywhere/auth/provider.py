@@ -604,9 +604,9 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
         """
         logger.debug(f"introspecting token: {token}")
 
-        access_token = self.tokens.get(token)
+        access_token = self.token_mapping.get(token)
 
-        logger.debug(f"found token: {access_token}")
+        logger.debug(f"found token: {access_token.token}")
 
         if not access_token:
             return None
