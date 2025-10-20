@@ -495,7 +495,7 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
 
         self.state_resource_tokens[state] = token
 
-        new_code = secrets.token_hex(16)
+        new_code = f"mcp_{secrets.token_hex(32)}"
 
         auth_code = AuthorizationCode(
             code=new_code,
@@ -509,7 +509,7 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
 
         self.auth_codes[new_code] = auth_code
 
-        self.tokens[new_code] = AccessToken(
+        self.tokens[token] = AccessToken(
             token=token,
             client_id=client_id,
             scopes=Config.GOOGLE_OAUTH_SCOPE.split(),
@@ -601,8 +601,7 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
         """Introspect an access token for resource server validation.
         Required for the introspection endpoint.
         """
-
-        access_token = self.token_mapping.get(token)
+        access_token = self.tokens.get(token)
 
         if not access_token:
             return None
