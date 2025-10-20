@@ -509,7 +509,7 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
 
         self.auth_codes[new_code] = auth_code
 
-        self.tokens[token] = AccessToken(
+        self.tokens[new_code] = AccessToken(
             token=token,
             client_id=client_id,
             scopes=Config.GOOGLE_OAUTH_SCOPE.split(),
