@@ -416,9 +416,9 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
 
         # Handle scope/scopes parameter
         if params.scopes:
-            scope_str = " ".join(scopes) if isinstance(scopes, list) else scopes
+            scope_str = " ".join(params.scopes) if isinstance(params.scopes, list) else params.scopes
         elif params.scope:
-            scope_str = scope
+            scope_str = params.scope
         else:
             scope_str = "mcp:read"
 
