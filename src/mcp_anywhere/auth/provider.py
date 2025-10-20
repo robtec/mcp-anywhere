@@ -414,12 +414,20 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
 
         logger.debug(f"Generate authorization params: {params}")
 
+        # Handle scope/scopes parameter
+        if params.scopes:
+            scope_str = " ".join(scopes) if isinstance(scopes, list) else scopes
+        elif params.scope:
+            scope_str = scope
+        else:
+            scope_str = "mcp:read"
+
         self.state_mapping[state] = {
             "redirect_uri": str(params.redirect_uri),
             "code_challenge": params.code_challenge,
             "redirect_uri_provided_explicitly": str(params.redirect_uri_provided_explicitly),
             "client_id": client.client_id,
-            "scope": params.scopes,
+            "scope": scope_str,
         }
 
         auth_url = (
@@ -446,6 +454,7 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
         code_challenge = state_data["code_challenge"]
         redirect_uri_provided_explicitly = state_data["redirect_uri_provided_explicitly"] == "True"
         client_id = state_data["client_id"]
+        scope = state_data["scope"]
 
         """Fetch Google access token"""
         access_token_url = Config.GOOGLE_OAUTH_TOKEN_URL
@@ -489,7 +498,7 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
             redirect_uri=str(AnyHttpUrl(redirect_uri)),
             redirect_uri_provided_explicitly=redirect_uri_provided_explicitly,
             expires_at=time.time() + 300,
-            scopes=Config.GOOGLE_OAUTH_SCOPE.split(),
+            scopes=scope.split(),
             code_challenge=code_challenge,
         )
 
@@ -589,7 +598,7 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
         """
 
         logger.debug(f"Introspecting token: {token[:10]}...")
-        
+
         access_token = self.tokens.get(token)
 
         if not access_token:
