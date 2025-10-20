@@ -108,6 +108,20 @@ class ContainerManager:
             logger.warning(f"Error checking container {container_name}: {e}")
             return False
 
+    def cleanup_stopped_container(self, container_name: str) -> None:
+
+        try:
+            # Try to get the existing container
+            existing_container = self.docker_client.containers.get(container_name)
+
+            if existing_container.status != "running":
+                logger.debug(f"Container {container_name} is not running, cleaning up...")
+                existing_container.remove(force=True)
+                logger.debug(f"Removed existing container {container_name}")
+
+        except APIError as e:
+            logger.warning(f"Failed to remove container '{container_name}': {e}")
+
     def _cleanup_existing_container(self, container_name: str) -> None:
         """Clean up existing container with the same name.
 
@@ -587,20 +601,16 @@ class ContainerManager:
 
             # Clean up existing containers before mounting (skip reused ones)
             for server in built_servers:
-                container_name = self._get_container_name(server.id)
+                container_name: str = self._get_container_name(server.id)
                 if container_name in self.reused_containers:
                     logger.debug(
                         f"Skipping cleanup for reused container {container_name}"
                     )
                 else:
-                    self._cleanup_existing_container(container_name)
+                    self.cleanup_stopped_container(container_name)
 
             async with get_async_session() as db_session:
                 for server in built_servers:
-                    # Always clean up a potentially lingering container from a previous failed run
-                    self._cleanup_existing_container(
-                        self._get_container_name(server.id)
-                    )
                     try:
                         # Add server to MCP manager and discover tools
                         discovered_tools = await mcp_manager.add_server(server)

@@ -123,4 +123,4 @@ class Config:
         "GOOGLE_OAUTH_USERINFO_URL", "https://www.googleapis.com/oauth2/v2/userinfo"
     )
 
-    OAUTH_USER_ALLOWED_DOMAINS = os.environ.get("OAUTH_USER_ALLOWED_DOMAIN")
+    OAUTH_USER_ALLOWED_DOMAIN = os.environ.get("OAUTH_USER_ALLOWED_DOMAIN")
