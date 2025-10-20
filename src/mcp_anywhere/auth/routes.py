@@ -208,14 +208,6 @@ async def handle_oauth_callback(request: Request) -> RedirectResponse:
         logger.error("Unexpected error", exc_info=e)
         return RedirectResponse(status_code=500, url=request.url)
 
-async def handle_google_login(request: Request) -> RedirectResponse:
-
-    oauth_provider = request.app.state.oauth_provider
-
-    google_url = await oauth_provider.build_auth_url()
-
-    return RedirectResponse(status_code=302, url=google_url)
-
 
 async def handle_logout(request: Request) -> RedirectResponse:
     """Process logout and clear session."""
