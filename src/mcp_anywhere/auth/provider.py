@@ -587,6 +587,9 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
         """Introspect an access token for resource server validation.
         Required for the introspection endpoint.
         """
+
+        logger.debug(f"Introspecting token: {token[:10]}...")
+        
         access_token = self.tokens.get(token)
 
         if not access_token:
