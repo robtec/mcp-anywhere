@@ -91,6 +91,8 @@ class TokenVerifier:
         # Extract token part
         token = authorization_header[7:].strip()  # Remove "Bearer " prefix
 
+        logger.debug(f"Extracting bearer token: {token[:10]}...")
+
         if not token:
             return None
 
