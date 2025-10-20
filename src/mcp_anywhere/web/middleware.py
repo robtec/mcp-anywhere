@@ -159,6 +159,7 @@ class MCPAuthMiddleware(BaseHTTPMiddleware):
                 status_code=401,
             )
 
+
         # For Google OAuth, check that user is part of allowed domains
         if isinstance(oauth_provider, GoogleOAuthProvider):
             logger.debug("Fetching Google user details")

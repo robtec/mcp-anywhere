@@ -620,6 +620,8 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
             headers={"Authorization": f"Bearer {access_token}"}
         )
 
+        logger.debug(f"Google user api response: {http_response.text}")
+
         if http_response.status_code != 200:
             raise HTTPException(
                 status_code=http_response.status_code,
