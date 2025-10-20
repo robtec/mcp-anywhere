@@ -536,6 +536,8 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
         if google_token:
             self.token_mapping[mcp_token] = google_token
 
+        logger.debug("Providing authorization code to OAuth user")
+
         del self.auth_codes[authorization_code.code]
 
         return OAuthToken(
