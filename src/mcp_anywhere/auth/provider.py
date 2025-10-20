@@ -558,7 +558,7 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
         user_profile = await self.get_user_profile(google_token)
 
         if not await self.user_has_domain_authorization(user_profile["email"]):
-            raise HTTPException(403, f"User {user_profile["email"]} has no domain authorization")
+            raise Exception(f"User {user_profile["email"]} has no authorization in domain")
 
         del self.auth_codes[authorization_code.code]
 
@@ -637,13 +637,12 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
 
     async def user_has_domain_authorization(self, email: str) -> bool:
 
-        logger.debug(f"Checking if user in domain {Config.OAUTH_USER_ALLOWED_DOMAIN}")
+        logger.debug(f"Checking if {email} in domain {Config.OAUTH_USER_ALLOWED_DOMAIN}")
 
         if Config.OAUTH_USER_ALLOWED_DOMAIN is None:
             return True
 
         domain = email.split("@")[1]
-        logger.debug(f"Checking user domain {domain} against authorized domain")
 
         if domain == Config.OAUTH_USER_ALLOWED_DOMAIN:
             return True
