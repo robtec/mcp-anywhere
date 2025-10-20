@@ -555,10 +555,10 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
         if google_token:
             self.token_mapping[mcp_token] = google_token
 
-        user = self.get_user_profile(google_token)
+        user_profile = await self.get_user_profile(google_token)
 
-        if not self.user_has_domain_authorization(user["email"]):
-            raise HTTPException(403, "User has no domain authorization")
+        if not await self.user_has_domain_authorization(user_profile["email"]):
+            raise HTTPException(403, f"User {user_profile["email"]} has no domain authorization")
 
         del self.auth_codes[authorization_code.code]
 
