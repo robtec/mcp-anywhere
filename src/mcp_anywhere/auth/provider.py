@@ -536,7 +536,7 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
         if authorization_code.code not in self.auth_codes:
             raise ValueError("Invalid authorization code")
 
-        mcp_token = secrets.token_hex(32)
+        mcp_token = f"mcp_{secrets.token_hex(32)}"
 
         self.tokens[mcp_token] = AccessToken(
             token=mcp_token,
