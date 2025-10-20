@@ -76,10 +76,6 @@ class JWTAuthMiddleware(BasePathProtectionMiddleware):
         """
         path = request.url.path
 
-        logger.debug(
-            f"JWT Auth dispatch path: {path}"
-        )
-
         # Check if this path needs protection
         if not self._should_protect_path(path):
             # Path is not protected, continue to next middleware

@@ -124,6 +124,8 @@ class MCPAuthMiddleware(BaseHTTPMiddleware):
         if not path.startswith(mcp_path) or ".well-known" in path:
             return await call_next(request)
 
+        logger.debug(f"mcp path: {path}")
+
         # Get authorization header
         auth_header = request.headers.get("authorization", "")
         if not auth_header.startswith("Bearer "):
