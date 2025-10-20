@@ -626,6 +626,8 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
                 detail="Failed to fetch Google OAuth user profile"
             )
 
+        logger.debug(f"Got google user profile")
+
         return http_response.json()
 
     async def user_has_domain_authorization(self, email: str) -> bool:
