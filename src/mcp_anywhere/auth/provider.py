@@ -412,6 +412,8 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
 
         state = params.state or secrets.token_hex(16)
 
+        logger.debug(f"Generate authorization params: {params}")
+
         self.state_mapping[state] = {
             "redirect_uri": str(params.redirect_uri),
             "code_challenge": params.code_challenge,
@@ -467,6 +469,8 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
         access_response = http_response.json()
 
         token = access_response.get('access_token')
+
+        logger.debug(f"Google access_token: {token[:6]}...")
 
         user_profile = await self.get_user_profile(token)
 
@@ -536,7 +540,7 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
         if google_token:
             self.token_mapping[mcp_token] = google_token
 
-        logger.debug("Providing authorization code to OAuth user")
+        logger.debug(f"Providing authorization code to OAuth user: {mcp_token[:6]}...")
 
         del self.auth_codes[authorization_code.code]
 
