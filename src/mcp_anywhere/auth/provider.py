@@ -555,6 +555,11 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
         if google_token:
             self.token_mapping[mcp_token] = google_token
 
+        user = self.get_user_profile(google_token)
+
+        if not self.user_has_domain_authorization(user["email"]):
+            raise HTTPException(403, "User has no domain authorization")
+
         del self.auth_codes[authorization_code.code]
 
         return OAuthToken(
@@ -613,6 +618,8 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
 
     async def get_user_profile(self, access_token: str) -> dict[str, Any]:
 
+        logger.debug("Fetching google user profile")
+
         http_response = await create_mcp_http_client().get(
             Config.GOOGLE_OAUTH_USERINFO_URL,
             headers={"Authorization": f"Bearer {access_token}"}
@@ -623,6 +630,8 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
                 status_code=http_response.status_code,
                 detail="Failed to fetch Google OAuth user profile"
             )
+
+        logger.debug(f"google user {http_response.json()["email"]}")
 
         return http_response.json()
 
@@ -640,7 +649,3 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
             return True
 
         return False
-
-    async def resource_token_from_state(self, state: str) -> str:
-        logger.debug(f"Fetching resource token from state {state}")
-        return self.state_resource_tokens[state]
