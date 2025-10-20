@@ -74,6 +74,7 @@ You can use tools/list to see all available tools from all mounted servers.
         container_manager = ContainerManager()
 
         if Config.REBUILD_CONTAINERS_ON_STARTUP:
+            logger.debug(f"Rebuilding containers on startup due to config: {Config.REBUILD_CONTAINERS_ON_STARTUP}")
             await container_manager.initialize_and_build_servers()
 
         await container_manager.mount_built_servers(mcp_manager)

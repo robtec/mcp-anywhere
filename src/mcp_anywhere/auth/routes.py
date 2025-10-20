@@ -1,7 +1,6 @@
 """OAuth routes using MCP SDK's auth module.
 Provides all required endpoints including .well-known discovery.
 """
-from authlib.integrations.starlette_client import OAuth
 from mcp.server.auth.routes import create_auth_routes, create_protected_resource_routes
 from mcp.server.auth.settings import AuthSettings, ClientRegistrationOptions
 from sqlalchemy import select
@@ -29,6 +28,7 @@ async def login_page(request: Request) -> HTMLResponse:
     """Render the login page."""
     error = request.query_params.get("error")
     next_url = request.query_params.get("next", "")
+
     return templates.TemplateResponse(
         request, "auth/login.html", {"error": error, "next_url": next_url}
     )
@@ -186,6 +186,47 @@ async def handle_consent(request: Request) -> RedirectResponse:
 
     return RedirectResponse(url=redirect_url, status_code=302)
 
+async def handle_oauth_callback_btn(request: Request) -> RedirectResponse:
+
+    """Handle OAuth callback button."""
+    code = request.query_params.get("code")
+    state = request.query_params.get("state")
+
+    next_url = request.query_params.get("next", "/")
+
+    if not code or not state:
+        raise HTTPException(400, "Missing code or state parameter")
+
+    oauth_provider = request.app.state.oauth_provider
+
+    try:
+
+        access_token = await oauth_provider.resource_token_from_state(state)
+
+        user_profile = await oauth_provider.get_user_profile(access_token)
+
+        if not await oauth_provider.user_has_domain_authorization(user_profile["email"]):
+            logger.error(f"User {user_profile["email"]} not part of authorized domain")
+            error_url = f"/auth/login?error=User {user_profile["email"]} not part of authorized domain"
+            if next_url != "/":
+                error_url += f"&next={next_url}"
+            return RedirectResponse(url=error_url, status_code=302)
+
+        username = user_profile["name"]
+
+        request.session["user_id"] = user_profile["id"]
+        request.session["username"] = username
+
+        logger.debug(f"Google User {username} successfully authenticated")
+
+        return RedirectResponse(status_code=302, url=next_url)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}")
+        return RedirectResponse(status_code=500, url=request.url)
+
+
 async def handle_oauth_callback(request: Request) -> RedirectResponse:
 
     code = request.query_params.get("code")
@@ -196,14 +237,29 @@ async def handle_oauth_callback(request: Request) -> RedirectResponse:
 
     oauth_provider = request.app.state.oauth_provider
 
+    if state.endswith("_btn"): # handle callback specific from login button
+        await oauth_provider.handle_callback(code, state)
+        return await handle_oauth_callback_btn(request)
+
     try:
+
         redirect_uri = await oauth_provider.handle_callback(code, state)
+
         return RedirectResponse(status_code=302, url=redirect_uri)
+
     except HTTPException:
         raise
     except Exception as e:
         logger.error("Unexpected error", exc_info=e)
         return RedirectResponse(status_code=500, url=request.url)
+
+async def handle_google_login(request: Request) -> RedirectResponse:
+
+    oauth_provider = request.app.state.oauth_provider
+
+    google_url = await oauth_provider.build_auth_url()
+
+    return RedirectResponse(status_code=302, url=google_url)
 
 
 async def handle_logout(request: Request) -> RedirectResponse:
