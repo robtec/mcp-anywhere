@@ -555,6 +555,7 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
         )
 
         if google_token:
+            logger.debug(f"Got google auth token: {google_token}, mappting to {mcp_token}")
             self.token_mapping[mcp_token] = google_token
 
         del self.auth_codes[authorization_code.code]
