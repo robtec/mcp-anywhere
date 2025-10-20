@@ -495,7 +495,7 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
 
         self.state_resource_tokens[state] = token
 
-        new_code = f"mcp_{secrets.token_hex(32)}"
+        new_code = secrets.token_hex(16)
 
         auth_code = AuthorizationCode(
             code=new_code,
@@ -519,8 +519,6 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
 
         del self.state_mapping[state]
 
-        logger.debug(f"constructing redirect uri: {redirect_uri}")
-
         return construct_redirect_uri(redirect_uri, code=new_code, state=state)
 
     async def load_authorization_code(
@@ -536,7 +534,7 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
         if authorization_code.code not in self.auth_codes:
             raise ValueError("Invalid authorization code")
 
-        mcp_token = f"mcp_{secrets.token_hex(32)}"
+        mcp_token = secrets.token_hex(32)
 
         self.tokens[mcp_token] = AccessToken(
             token=mcp_token,
@@ -601,7 +599,6 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
         """Introspect an access token for resource server validation.
         Required for the introspection endpoint.
         """
-
         access_token = self.tokens.get(token)
 
         if not access_token:
@@ -621,15 +618,11 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
             headers={"Authorization": f"Bearer {access_token}"}
         )
 
-        logger.debug(f"Google user api response: {http_response.text}")
-
         if http_response.status_code != 200:
             raise HTTPException(
                 status_code=http_response.status_code,
                 detail="Failed to fetch Google OAuth user profile"
             )
-
-        logger.debug(f"Got google user profile")
 
         return http_response.json()
 
