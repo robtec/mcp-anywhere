@@ -519,6 +519,8 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
 
         del self.state_mapping[state]
 
+        logger.debug(f"constructing redirect uri: {redirect_uri}")
+
         return construct_redirect_uri(redirect_uri, code=new_code, state=state)
 
     async def load_authorization_code(
