@@ -412,11 +412,22 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
 
         state = params.state or secrets.token_hex(16)
 
+        logger.debug(f"Generate authorization params: {params}")
+
+        # Handle scope/scopes parameter
+        if params.scopes:
+            scope_str = " ".join(params.scopes) if isinstance(params.scopes, list) else params.scopes
+        elif params.scope:
+            scope_str = params.scope
+        else:
+            scope_str = "mcp:read"
+
         self.state_mapping[state] = {
             "redirect_uri": str(params.redirect_uri),
             "code_challenge": params.code_challenge,
             "redirect_uri_provided_explicitly": str(params.redirect_uri_provided_explicitly),
             "client_id": client.client_id,
+            "scope": scope_str,
         }
 
         auth_url = (
@@ -430,31 +441,6 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
 
         return auth_url
 
-    async def build_auth_url(self) -> str:
-
-        state = f"{secrets.token_hex(16)}_btn"
-
-        redirect_uri = f"{Config.SERVER_URL}{Config.GOOGLE_OAUTH_REDIRECT_URI}"
-
-        self.state_mapping[state] = {
-            "redirect_uri": redirect_uri,
-            "code_challenge": "code",
-            "redirect_uri_provided_explicitly": "True",
-            "client_id": f"{Config.GOOGLE_OAUTH_CLIENT_ID}",
-        }
-
-        auth_url = (
-            f"{Config.GOOGLE_OAUTH_AUTH_URL}"
-            f"?client_id={Config.GOOGLE_OAUTH_CLIENT_ID}"
-            f"&redirect_uri={redirect_uri}"
-            f"&response_type=code"
-            f"&scope={Config.GOOGLE_OAUTH_SCOPE}"
-            f"&state={state}"
-        )
-
-        logger.debug(f"Building auth url: {auth_url}")
-
-        return auth_url
 
     async def handle_callback(self, code: str, state: str) -> str:
         """Handle Google OAuth callback."""
@@ -468,6 +454,7 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
         code_challenge = state_data["code_challenge"]
         redirect_uri_provided_explicitly = state_data["redirect_uri_provided_explicitly"] == "True"
         client_id = state_data["client_id"]
+        scope = state_data["scope"]
 
         """Fetch Google access token"""
         access_token_url = Config.GOOGLE_OAUTH_TOKEN_URL
@@ -484,7 +471,7 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
         )
 
         logger.debug(
-            f"Google authorization HTTP Response: {http_response.status_code} {http_response.text}"
+            f"Google authorization HTTP Response: {http_response.status_code}"
         )
 
         http_response.raise_for_status()
@@ -492,6 +479,14 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
         access_response = http_response.json()
 
         token = access_response.get('access_token')
+
+        logger.debug(f"Google access_token: {token[:10]}...")
+
+        user_profile = await self.get_user_profile(token)
+
+        if not await self.user_has_domain_authorization(user_profile["email"]):
+            logger.error(f"User {user_profile['email']} not part of authorized domain.")
+            raise HTTPException(401, f"User {user_profile['email']} not part of authorized domain.")
 
         self.state_resource_tokens[state] = token
 
@@ -503,7 +498,7 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
             redirect_uri=str(AnyHttpUrl(redirect_uri)),
             redirect_uri_provided_explicitly=redirect_uri_provided_explicitly,
             expires_at=time.time() + 300,
-            scopes=Config.GOOGLE_OAUTH_SCOPE.split(),
+            scopes=scope.split(),
             code_challenge=code_challenge,
         )
 
@@ -555,6 +550,8 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
         if google_token:
             self.token_mapping[mcp_token] = google_token
 
+        logger.debug(f"Providing authorization code to OAuth user: {mcp_token[:10]}...")
+
         del self.auth_codes[authorization_code.code]
 
         return OAuthToken(
@@ -599,6 +596,9 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
         """Introspect an access token for resource server validation.
         Required for the introspection endpoint.
         """
+
+        logger.debug(f"Introspecting token: {token[:10]}...")
+
         access_token = self.tokens.get(token)
 
         if not access_token:
@@ -613,6 +613,8 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
 
     async def get_user_profile(self, access_token: str) -> dict[str, Any]:
 
+        logger.debug("Fetching google user profile")
+
         http_response = await create_mcp_http_client().get(
             Config.GOOGLE_OAUTH_USERINFO_URL,
             headers={"Authorization": f"Bearer {access_token}"}
@@ -624,23 +626,20 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
                 detail="Failed to fetch Google OAuth user profile"
             )
 
+        logger.debug(f"google user {http_response.json()["email"]}")
+
         return http_response.json()
 
     async def user_has_domain_authorization(self, email: str) -> bool:
 
-        logger.debug(f"Checking if user in domain {Config.OAUTH_USER_ALLOWED_DOMAIN}")
+        logger.debug(f"Checking if {email} in domain {Config.OAUTH_USER_ALLOWED_DOMAIN}")
 
         if Config.OAUTH_USER_ALLOWED_DOMAIN is None:
             return True
 
         domain = email.split("@")[1]
-        logger.debug(f"Checking user domain {domain} against authorized domain")
 
         if domain == Config.OAUTH_USER_ALLOWED_DOMAIN:
             return True
 
         return False
-
-    async def resource_token_from_state(self, state: str) -> str:
-        logger.debug(f"Fetching resource token from state {state}")
-        return self.state_resource_tokens[state]
