@@ -471,7 +471,7 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
         )
 
         logger.debug(
-            f"Google authorization HTTP Response: {http_response.status_code} {http_response.text}"
+            f"Google authorization HTTP Response: {http_response.status_code}"
         )
 
         http_response.raise_for_status()
