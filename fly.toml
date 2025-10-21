@@ -19,6 +19,7 @@ kill_timeout = '5s'
   LOG_LEVEL = 'DEBUG'
   SERVER_URL = 'https://mcp-anywhere.fly.dev'
   OAUTH_USER_ALLOWED_DOMAIN = 'locomotive.agency'
+  GOOGLE_OAUTH_REDIRECT_URI = '/auth/callback'
 
 [[mounts]]
   source = 'mcp_anywhere_data'
