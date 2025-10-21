@@ -124,6 +124,8 @@ class MCPAuthMiddleware(BaseHTTPMiddleware):
         if not path.startswith(mcp_path) or ".well-known" in path:
             return await call_next(request)
 
+        logger.debug(f"mcp path: {path}")
+
         # Get authorization header
         auth_header = request.headers.get("authorization", "")
         if not auth_header.startswith("Bearer "):
@@ -158,22 +160,6 @@ class MCPAuthMiddleware(BaseHTTPMiddleware):
                 },
                 status_code=401,
             )
-
-        # For Google OAuth, check that user is part of allowed domains
-        if isinstance(oauth_provider, GoogleOAuthProvider):
-            logger.debug("Fetching Google user details")
-            google_user = await oauth_provider.get_user_profile(access_token.token)
-
-            email = google_user["email"]
-
-            if not await oauth_provider.user_has_domain_authorization(email):
-                return JSONResponse(
-                    {
-                        "error": "User Unauthorized",
-                        "error_description": "User not member of authorized domain",
-                    },
-                    status_code=403,
-                )
 
         # Authentication successful, proceed with request
         return await call_next(request)
