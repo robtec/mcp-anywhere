@@ -257,6 +257,11 @@ DATA_DIR                   # Data storage directory (default: .data)
 DOCKER_TIMEOUT             # Container operation timeout in seconds (default: 300)
 LOG_LEVEL                  # Logging level (default: INFO)
 GITHUB_TOKEN               # GitHub token for private repository access
+GOOGLE_OAUTH_CLIENT_ID     # Google OAuth Client ID, for OAuth on the /mcp/ endpoint
+GOOGLE_OAUTH_CLIENT_SECRET # Google OAuth Client Secret, for OAuth on the /mcp/ endpoint
+OAUTH_USER_ALLOWED_DOMAIN  # Allowed OAuth user domain, e.g. rob@example.com is part of the example.com domain
+CLEANUP_CONTAINERS_ON_SHUTDOWN # Destroy and cleanup mcp containers on application shutdown
+REBUILD_CONTAINERS_ON_STARTUP # Always rebuild mcp containers on startup, even healthy ones
 ```
 
 ## Development
